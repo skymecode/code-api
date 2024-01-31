@@ -1,4 +1,4 @@
-package com.yupi.project.service;
+package com.skyme.project.service;
 
 
 import com.skyme.apicommon.model.entity.User;
