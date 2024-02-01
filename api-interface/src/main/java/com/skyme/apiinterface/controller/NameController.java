@@ -1,6 +1,7 @@
 package com.skyme.apiinterface.controller;
 
 
+import cn.hutool.http.HttpUtil;
 import com.skyme.apiclientsdk.utils.SignUtils;
 import com.skyme.apiinterface.model.User;
 
@@ -17,8 +18,9 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/name")
 public class NameController {
     @GetMapping("/")
-    public String getNameByGet(String name){
-        return  "GET 你的名字是"+name;
+    public String getNameByGet(String sort){
+        String s = HttpUtil.get("https://api.uomg.com/api/rand.avatar?sort=" + sort + "&format=json");
+        return  s;
 
     }
     @PostMapping("/")
@@ -28,23 +30,7 @@ public class NameController {
     }
     @PostMapping("/user")
     public String getUserNameByPost(@RequestBody User user, HttpServletRequest request){
-        String accessKey= request.getHeader("accessKey");
-       String nonce=request.getHeader("nonce");
-       String timestamp=request.getHeader("timestamp");
-       String sign=request.getHeader("sign");
-       String body=request.getHeader("body");
-       if (!accessKey.equals("skyme")){
-           throw new RuntimeException("无权限");
-       }
-        if (Long.parseLong(nonce)>10000){
-            throw new RuntimeException("无权限");
-        }
-        //todo 时间不能与当前时间超过5分钟
-        //todo 实际是从数据库取出secretkey
-        String s = SignUtils.genSign(body, "test");
-        if (!sign.equals(s)){
-            throw new RuntimeException("无权限");
-        }
+
         return  "POST 用户名"+user.getUsername();
 
     }

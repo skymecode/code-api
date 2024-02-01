@@ -26,6 +26,9 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +62,16 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
         String accessKey = headers.getFirst("accessKey");
         String nonce = headers.getFirst("nonce");
         String timestamp = headers.getFirst("timestamp");
-        String body = headers.getFirst("body");
+
+        String body = null;
+        //解码，解决中文乱码问题
+        body = headers.getFirst("body");
+        try {
+            body = URLDecoder.decode(body,"utf-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
         String sign = headers.getFirst("sign");
         InterfaceInfo interfaceInfo=null;
         try {

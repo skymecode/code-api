@@ -309,11 +309,11 @@ public class InterfaceController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"接口已经关闭");
         }
 
-        Gson gson=new Gson();
-        com.skyme.apiclientsdk.model.User user = gson.fromJson(userRequestParams, com.skyme.apiclientsdk.model.User.class);;
+//        Gson gson=new Gson();
+//        com.skyme.apiclientsdk.model.User user = gson.fromJson(userRequestParams, com.skyme.apiclientsdk.model.User.class);;
         //判断接口是否可以调用
         ApiClient apiClient = getAPIClient(request);
-        String userNameByPost = apiClient.getUserNameByPost(user);
+        String userNameByPost = apiClient.getNameByGet(userRequestParams);
         if (StringUtils.isBlank(userNameByPost)){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"接口调用失败");
         }
@@ -329,6 +329,7 @@ public class InterfaceController {
         QueryWrapper<UserSignature> userSignatureQueryWrapper = new QueryWrapper<UserSignature>();
         User loginUser = userService.getLoginUser(request);
         userSignatureQueryWrapper.eq("userId",loginUser.getId());
+        userSignatureQueryWrapper.eq("status",0);
         UserSignature realSg = userSignatureService.getOne(userSignatureQueryWrapper);
         String accessKey = realSg.getAccessKey();
         String accessSecret = realSg.getAccessSecret();

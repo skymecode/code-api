@@ -1,6 +1,6 @@
 package com.skyme.apigateway;
 
-import com.yupi.project.provider.DemoService;
+import com.skyme.project.provider.DemoService;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.springframework.boot.SpringApplication;

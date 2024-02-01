@@ -2,11 +2,15 @@ package com.skyme.project.service;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.skyme.apicommon.model.entity.User;
+import com.skyme.project.model.dto.usersignature.UserSignatureQueryRequest;
+import com.skyme.project.model.entity.UserSignature;
 
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 用户服务
@@ -58,4 +62,8 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean userLogout(HttpServletRequest request);
+
+    UserSignature subscribeAKSK(HttpServletRequest request);
+
+    Page<UserSignature>  subscribeGetAKSK(UserSignatureQueryRequest userSignatureQueryRequest,HttpServletRequest request);
 }

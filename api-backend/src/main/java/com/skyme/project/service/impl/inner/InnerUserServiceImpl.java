@@ -25,6 +25,7 @@ public class InnerUserServiceImpl implements InnerUserService {
         }
         QueryWrapper<UserSignature> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("accessKey",ak);
+        queryWrapper.eq("status",0);
         UserSignature userSignature = userSignatureMapper.selectOne(queryWrapper);
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         userQueryWrapper.eq("id",userSignature.getUserId());
@@ -44,6 +45,7 @@ public class InnerUserServiceImpl implements InnerUserService {
 
         QueryWrapper<UserSignature> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId",uid);
+        queryWrapper.eq("status",0);
         UserSignature userSignature = userSignatureMapper.selectOne(queryWrapper);
         return userSignature.getAccessSecret();
 

@@ -1,7 +1,12 @@
 package com.skyme.project.service.impl;
 
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.crypto.digest.DigestAlgorithm;
+import cn.hutool.crypto.digest.Digester;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.skyme.apicommon.model.entity.User;
 import com.skyme.project.common.ErrorCode;
@@ -9,10 +14,16 @@ import com.skyme.project.config.JwtConfig;
 import com.skyme.project.exception.BusinessException;
 import com.skyme.project.mapper.UserMapper;
 
+import com.skyme.project.mapper.mapper.UserSignatureMapper;
+import com.skyme.project.model.dto.usersignature.UserSignatureQueryRequest;
+import com.skyme.project.model.entity.UserSignature;
+import com.skyme.project.model.vo.UserVO;
 import com.skyme.project.service.UserService;
+import com.skyme.project.service.service.UserSignatureService;
 import com.skyme.project.type.LoginUser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,8 +36,11 @@ import org.springframework.util.DigestUtils;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.skyme.project.constant.UserConstant.ADMIN_ROLE;
 import static com.skyme.project.constant.UserConstant.USER_LOGIN_STATE;
@@ -49,6 +63,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Autowired
     RedisTemplate redisTemplate;
+
+    @Resource
+    UserSignatureMapper userSignatureMapper;
+
+    @Resource
+    UserSignatureService userSignatureService;
 
     @Resource
     private JwtConfig jwtConfig ;
@@ -194,6 +214,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 移除登录态
         request.getSession().removeAttribute(USER_LOGIN_STATE);
         return true;
+    }
+
+    /**
+     * 申请AKSK
+     * @param request
+     * @return
+     */
+    @Override
+    public UserSignature subscribeAKSK(HttpServletRequest request) {
+        User loginUser = getLoginUser(request);
+        UserSignature userSignature = new UserSignature();
+        userSignature.setUserId(loginUser.getId());
+        Digester s=new Digester(DigestAlgorithm.SHA256);
+        //先将所有得拿出来变成状态变为失效,再放入一个新的
+        QueryWrapper<UserSignature> userSignatureQueryWrapper = new QueryWrapper<>();
+        userSignatureQueryWrapper.eq("status",0);
+        List<UserSignature> userSignatures = userSignatureMapper.selectList(userSignatureQueryWrapper);
+        userSignatures.forEach(test -> {
+            if (test.getStatus() == 0) {
+                test.setStatus(1);
+                userSignatureMapper.updateById(test);
+            }
+        });
+        userSignature.setAccessKey(s.digestHex(loginUser.getUserAccount()+System.currentTimeMillis()/1000+ RandomUtil.randomNumbers(4)));
+        String ak=s.digestHex(loginUser.getUserPassword()+"ak"+System.currentTimeMillis()/1000+RandomUtil.randomNumbers(4));
+        userSignature.setAccessSecret(ak);
+        int insert = userSignatureMapper.insert(userSignature);
+        if (insert<=0){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"申请失败");
+        }
+        return userSignature;
+    }
+
+    @Override
+    public Page<UserSignature> subscribeGetAKSK(UserSignatureQueryRequest userSignatureQueryRequest,HttpServletRequest request) {
+        long current=1;
+        long size=10;
+
+        if (userSignatureQueryRequest!=null){
+            current=userSignatureQueryRequest.getCurrent();
+            size=userSignatureQueryRequest.getPageSize();
+        }
+        User loginUser = getLoginUser(request);
+        QueryWrapper<UserSignature> userSignatureQueryWrapper = new QueryWrapper<>();
+        userSignatureQueryWrapper.eq("userId",loginUser.getId());
+        Page<UserSignature> signPage= userSignatureService.page(new Page<>(current,size),userSignatureQueryWrapper);
+        return signPage;
     }
 
 }

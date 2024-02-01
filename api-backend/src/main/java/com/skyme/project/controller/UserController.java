@@ -14,6 +14,8 @@ import com.skyme.project.exception.BusinessException;
 import com.skyme.project.model.dto.*;
 import com.skyme.project.model.dto.user.*;
 
+import com.skyme.project.model.dto.usersignature.UserSignatureQueryRequest;
+import com.skyme.project.model.entity.UserSignature;
 import com.skyme.project.model.vo.UserVO;
 import com.skyme.project.service.UserService;
 import com.skyme.project.type.LoginUser;
@@ -249,6 +251,19 @@ public class UserController {
         }).collect(Collectors.toList());
         userVOPage.setRecords(userVOList);
         return ResultUtils.success(userVOPage);
+    }
+    @PostMapping("/subscribe/aksk")
+    public BaseResponse<UserSignature> subscribeAKSK(HttpServletRequest request) {
+
+
+        UserSignature result = userService.subscribeAKSK(request);
+        return ResultUtils.success(result);
+    }
+    @GetMapping("/subscribe/aksk")
+    public BaseResponse<Page<UserSignature>> getAKSK(UserSignatureQueryRequest userSignatureQueryRequest,HttpServletRequest request) {
+
+        Page<UserSignature> result=userService.subscribeGetAKSK(userSignatureQueryRequest,request);
+        return ResultUtils.success(result);
     }
 
     // endregion
