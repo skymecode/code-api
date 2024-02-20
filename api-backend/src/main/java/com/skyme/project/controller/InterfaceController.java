@@ -1,16 +1,20 @@
 package com.skyme.project.controller;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
 import com.skyme.apiclientsdk.client.ApiClient;
 
+import com.skyme.apicommon.model.dto.RequestParam;
 import com.skyme.apicommon.model.entity.InterfaceInfo;
 import com.skyme.apicommon.model.entity.User;
+import com.skyme.apicommon.model.entity.UserInterfaceInfo;
 import com.skyme.project.annotation.AuthCheck;
 import com.skyme.project.common.*;
 import com.skyme.project.constant.CommonConstant;
 import com.skyme.project.exception.BusinessException;
+import com.skyme.project.mapper.UserInterfaceInfoMapper;
 import com.skyme.project.mapper.mapper.UserSignatureMapper;
 import com.skyme.project.model.dto.interfaceinfo.InterfaceAddRequest;
 import com.skyme.project.model.dto.interfaceinfo.InterfaceInvokeRequest;
@@ -18,9 +22,12 @@ import com.skyme.project.model.dto.interfaceinfo.InterfaceQueryRequest;
 import com.skyme.project.model.dto.interfaceinfo.InterfaceUpdateRequest;
 
 
+
 import com.skyme.project.model.entity.UserSignature;
 import com.skyme.project.model.enums.InterfaceStatusEnum;
+import com.skyme.project.model.vo.InterfaceInfoUserVO;
 import com.skyme.project.service.InterfaceInfoService;
+import com.skyme.project.service.UserInterfaceInfoService;
 import com.skyme.project.service.UserService;
 import com.skyme.project.service.service.UserSignatureService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -50,6 +58,14 @@ public class InterfaceController {
 
     @Resource
     private UserSignatureService userSignatureService;
+
+    @Resource
+    UserInterfaceInfoService userInterfaceInfoService;
+
+    @Resource
+    UserInterfaceInfoMapper userInterfaceInfoMapper;
+
+
 
 
     // region 增删改查
@@ -146,12 +162,27 @@ public class InterfaceController {
      * @return
      */
     @GetMapping("/get")
-    public BaseResponse<InterfaceInfo> getInterfaceInfoById(long id) {
+    public BaseResponse<InterfaceInfoUserVO> getInterfaceInfoById(long id, HttpServletRequest request) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         InterfaceInfo interfaceInfo = interfaceInfoService.getById(id);
-        return ResultUtils.success(interfaceInfo);
+        QueryWrapper<UserInterfaceInfo> userInterfaceInfoQueryWrapper = new QueryWrapper<>();
+        userInterfaceInfoQueryWrapper.eq("userId",userService.getLoginUser(request).getId());
+        userInterfaceInfoQueryWrapper.eq("interfaceInfoId",id);
+        com.skyme.apicommon.model.entity.UserInterfaceInfo userInterfaceInfo = userInterfaceInfoMapper.selectOne(userInterfaceInfoQueryWrapper);
+
+        InterfaceInfoUserVO interfaceInfoUserVO = new InterfaceInfoUserVO();
+       BeanUtils.copyProperties(interfaceInfo,interfaceInfoUserVO);
+       if (userInterfaceInfo==null){
+           interfaceInfoUserVO.setLeftNum(0);
+           interfaceInfoUserVO.setTotalNum(0);
+       }else{
+           interfaceInfoUserVO.setLeftNum(userInterfaceInfo.getLeftNum());
+           interfaceInfoUserVO.setTotalNum(userInterfaceInfo.getTotalNum());
+       }
+
+        return ResultUtils.success(interfaceInfoUserVO);
     }
 
     /**
@@ -226,14 +257,12 @@ public class InterfaceController {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
         //判断接口是否可以调用
-        com.skyme.apiclientsdk.model.User user1 = new com.skyme.apiclientsdk.model.User();
-        user1.setUsername("skyme");
         ApiClient apiClient = getAPIClient(request);
-        String userNameByPost = apiClient.getUserNameByPost(user1);
-        if (StringUtils.isBlank(userNameByPost)){
+        String res = apiClient.request(oldInterfaceInfo, new String[]{});
+        //todo 可能存在问题
+        if (StringUtils.isBlank(res)){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"接口调用失败");
         }
-
         InterfaceInfo interfaceInfo = new InterfaceInfo();
         interfaceInfo.setId(id);
         interfaceInfo.setStatus(InterfaceStatusEnum.ONLINE.getValue());
@@ -267,14 +296,6 @@ public class InterfaceController {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
         //判断接口是否可以调用
-        com.skyme.apiclientsdk.model.User user1 = new com.skyme.apiclientsdk.model.User();
-        user1.setUsername("skyme");
-        ApiClient apiClient = getAPIClient(request);
-        String userNameByPost = apiClient.getUserNameByPost(user1);
-        if (StringUtils.isBlank(userNameByPost)){
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"接口调用失败");
-        }
-
         InterfaceInfo interfaceInfo = new InterfaceInfo();
         interfaceInfo.setId(id);
         interfaceInfo.setStatus(InterfaceStatusEnum.OFFLINE.getValue());
@@ -300,7 +321,9 @@ public class InterfaceController {
         }
         // 判断接口是否存在
         Long id = invokeRequest.getId();
-        String userRequestParams = invokeRequest.getUserRequestParams();
+
+        String[] userRequestParams = invokeRequest.getUserRequestParams();
+
         InterfaceInfo oldInterfaceInfo = interfaceInfoService.getById(id);
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
@@ -308,14 +331,18 @@ public class InterfaceController {
         if(oldInterfaceInfo.getStatus()==InterfaceStatusEnum.OFFLINE.getValue()){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"接口已经关闭");
         }
-
 //        Gson gson=new Gson();
 //        com.skyme.apiclientsdk.model.User user = gson.fromJson(userRequestParams, com.skyme.apiclientsdk.model.User.class);;
-        //判断接口是否可以调用
+        //将第三方接口调用
+        System.out.println("参数:"+ Arrays.toString(invokeRequest.getUserRequestParams()));
         ApiClient apiClient = getAPIClient(request);
-        String userNameByPost = apiClient.getNameByGet(userRequestParams);
+        String userNameByPost = apiClient.request(oldInterfaceInfo,userRequestParams);
         if (StringUtils.isBlank(userNameByPost)){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"接口调用失败");
+        }
+        //相当于它做了网关的事情,本质上不该这样做,应该在网关那处理
+        if (!oldInterfaceInfo.getUrl().contains("http://api-gateway:8090")){
+            userInterfaceInfoService.invokeCount(oldInterfaceInfo.getId(),userService.getLoginUser(request).getId());
         }
         return ResultUtils.success(userNameByPost);
     }

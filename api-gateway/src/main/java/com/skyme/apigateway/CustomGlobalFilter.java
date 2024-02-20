@@ -1,8 +1,12 @@
 package com.skyme.apigateway;
 
+import cn.hutool.core.thread.ThreadUtil;
+import com.skyme.apiclientsdk.async.LogTask;
+import com.skyme.apiclientsdk.utils.FeishuUtils;
 import com.skyme.apiclientsdk.utils.SignUtils;
 import com.skyme.apicommon.model.entity.InterfaceInfo;
 import com.skyme.apicommon.model.entity.User;
+import com.skyme.apicommon.model.entity.UserInterfaceInfo;
 import com.skyme.apicommon.model.service.InnerInterfaceInfoService;
 import com.skyme.apicommon.model.service.InnerUserInterfaceInfoService;
 import com.skyme.apicommon.model.service.InnerUserService;
@@ -27,6 +31,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -43,19 +48,39 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
     InnerUserInterfaceInfoService innerUserInterfaceInfoService;
     @DubboReference
     InnerInterfaceInfoService innerInterfaceInfoService;
-    private static final String INTERFACE_HOST="http://127.0.0.1:8090";
+    private static final String INTERFACE_HOST="http://api-gateway:8090";
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        FeishuUtils.chat_id="oc_a652d2fb490d945d7e2357b2c36e7301";
         //1. 请求日志
         ServerHttpRequest request = exchange.getRequest();
         ServerHttpResponse response = exchange.getResponse();
         log.info("请求唯一标识:"+request.getId());
         String method = request.getMethod().toString();
         log.info("请求方法:"+method);
-        String url = INTERFACE_HOST+request.getPath().value();
+        URI uri = request.getURI();
+        String url=uri.getScheme()+"://"+uri.getHost()+":"+uri.getPort()+uri.getPath();
         log.info("请求路径:"+url);
         log.info("请求参数:"+request.getQueryParams());
         log.info("请求来源地址:"+request.getRemoteAddress());
+        StringBuilder sb=new StringBuilder();
+        sb.append("请求唯一标识:");
+        sb.append(request.getId());
+        sb.append("\n请求方法:");
+        sb.append(method);
+        sb.append("\n请求路径:");
+        sb.append(uri);
+        sb.append("\n请求参数");
+        sb.append(request.getQueryParams());
+        sb.append("\n请求来源地址:");
+        sb.append(request.getRemoteAddress());
+        try {
+
+            ThreadUtil.execAsync(new LogTask("INFO",sb.toString()));
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         //2.黑名单
         //3. 鉴权
         HttpHeaders headers = request.getHeaders();
@@ -80,6 +105,7 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
             log.error("getinterfaceInfo ERROR:"+e);
         }
         if (interfaceInfo==null){
+            log.info("没有信息");
             return  handlNoAuth(response);
         }
         User invokeUser=null;
@@ -89,11 +115,19 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
             log.error("getInvokeUser ERROR:"+e);
         }
         if (invokeUser==null){
+            log.info("执行人错误");
             return  handlNoAuth(response);
+        }
+        UserInterfaceInfo userInterfaceInfo = innerUserInterfaceInfoService.queryUserInterfaceInfo(interfaceInfo, invokeUser);
+        if (userInterfaceInfo==null){
+            return handlNoAuth(response);
+        }else if (userInterfaceInfo.getLeftNum()<=0){
+            return handlNoAuth(response);
         }
         String secretKey = innerUserService.getSecretKey(invokeUser.getId());
         String s = SignUtils.genSign(body, secretKey);
         if (s==null||!s.equals(sign)){
+            log.info("校验错误");
            return handlNoAuth(response);
         }
         try {
@@ -125,9 +159,20 @@ public class CustomGlobalFilter implements GlobalFilter, Ordered {
                                 //rspArgs.add(requestUrl);
                                 String data = new String(content, StandardCharsets.UTF_8);//data
                                 log.info("<-- {} {}\n", originalResponse.getStatusCode(), data);
+                                try {
+                                    ThreadUtil.execAsync(new LogTask("INFO","网关正常响应:"+getStatusCode()));
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
+                                }
                                 return bufferFactory.wrap(content);
                             }));
                         } else {
+                            try {
+                                ThreadUtil.execAsync(new LogTask("ERROR","网关响应异常:"+getStatusCode()));
+
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                             log.error("<--- {} 响应code异常", getStatusCode());
                         }
                         return super.writeWith(body);

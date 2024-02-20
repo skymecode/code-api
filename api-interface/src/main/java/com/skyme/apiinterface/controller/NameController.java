@@ -20,6 +20,7 @@ public class NameController {
     @GetMapping("/")
     public String getNameByGet(String sort){
         String s = HttpUtil.get("https://api.uomg.com/api/rand.avatar?sort=" + sort + "&format=json");
+
         return  s;
 
     }
@@ -34,4 +35,5 @@ public class NameController {
         return  "POST 用户名"+user.getUsername();
 
     }
+
 }

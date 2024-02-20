@@ -45,14 +45,13 @@ public class UserInterfaceInfoController {
     // region 增删改查
 
     /**
-     * 创建
+     * 给用户分配次数
      *
      * @param userInterfaceInfoAddRequest
      * @param request
      * @return
      */
     @PostMapping("/add")
-    @PreAuthorize("hasAuthority('admin')")
     public BaseResponse<Long> addUserInterfaceInfo(@RequestBody UserInterfaceInfoAddRequest userInterfaceInfoAddRequest, HttpServletRequest request) {
         if (userInterfaceInfoAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -60,7 +59,10 @@ public class UserInterfaceInfoController {
         UserInterfaceInfo userInterfaceInfo = new UserInterfaceInfo();
         BeanUtils.copyProperties(userInterfaceInfoAddRequest, userInterfaceInfo);
         // 校验
-        userInterfaceInfoService.validUserInterfaceInfo(userInterfaceInfo, true);
+        if (userInterfaceInfoAddRequest.getLeftNum()>50){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        userInterfaceInfoService.validUserInterfaceInfo(userInterfaceInfo, false);
         User loginUser = userService.getLoginUser(request);
         userInterfaceInfo.setUserId(loginUser.getId());
         boolean result = userInterfaceInfoService.save(userInterfaceInfo);
@@ -197,6 +199,7 @@ public class UserInterfaceInfoController {
         Page<UserInterfaceInfo> userInterfaceInfoPage = userInterfaceInfoService.page(new Page<>(current, size), queryWrapper);
         return ResultUtils.success(userInterfaceInfoPage);
     }
+
 
     // endregion
 

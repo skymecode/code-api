@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  webapp:
+    image: api-backend
+    ports:
+      - "7529:7529"
+    volumes:
+      - "/data"
+    networks:
+      - default
+      - mynetwork
+networks:
+  mynetwork:
+    external: true
+
+
+
+

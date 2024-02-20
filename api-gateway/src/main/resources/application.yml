@@ -7,7 +7,7 @@ spring:
     gateway:
       routes:
         - id: gateway-api
-          uri: http://localhost:8123
+          uri: http://api-interface:8123
           predicates:
             - Path=/api/**
 dubbo:
@@ -17,4 +17,4 @@ dubbo:
     name: dubbo
     port: -1
   registry:
-    address: nacos://localhost:8848
+    address: nacos://nacos:8848

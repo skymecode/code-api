@@ -1,5 +1,8 @@
 package com.skyme.project.aop;
 
+import cn.hutool.core.thread.ThreadUtil;
+import com.skyme.apiclientsdk.async.LogTask;
+import com.skyme.apiclientsdk.utils.FeishuUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -44,12 +47,16 @@ public class LogInterceptor {
         // 输出请求日志
         log.info("request start，id: {}, path: {}, ip: {}, params: {}", requestId, url,
                 httpServletRequest.getRemoteHost(), reqParam);
+        ThreadUtil.execAsync(new LogTask("INFO","request start，\nid:"+requestId+"\npath:"+url+"\nip:"+httpServletRequest.getRemoteHost()+"\nparams:"+reqParam));
+
         // 执行原方法
         Object result = point.proceed();
         // 输出响应日志
         stopWatch.stop();
         long totalTimeMillis = stopWatch.getTotalTimeMillis();
         log.info("request end, id: {}, cost: {}ms", requestId, totalTimeMillis);
+        ThreadUtil.execAsync(new LogTask("INFO","request end, \nid:"+requestId+"\ncost:"+totalTimeMillis+"ms"));
+
         return result;
     }
 }

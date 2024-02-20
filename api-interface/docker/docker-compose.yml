@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  api-interface:
+    image: api-interface
+    ports:
+      - "8123:8123"
+    volumes:
+      - "/data"
+    networks:
+      - default
+      - mynetwork
+networks:
+  mynetwork:
+    external: true
+
+

@@ -4,9 +4,9 @@ spring:
   # DataSource Config
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://47.109.90.77:3307/klapi?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: Ww5103265@
+    url:
+    username:
+    password:
     hikari:
       read-only: false
       connection-timeout: 60000
@@ -25,9 +25,9 @@ spring:
   # redis 配置
   redis:
     port: 6379
-    host: 47.109.90.77
+    host:
     database: 0
-    password: w5103265
+    password:
 server:
   port: 7529
   servlet:
@@ -61,4 +61,4 @@ dubbo:
       name: dubbo
       port: -1
   registry:
-    address: nacos://localhost:8848
+    address: nacos://nacos:8848

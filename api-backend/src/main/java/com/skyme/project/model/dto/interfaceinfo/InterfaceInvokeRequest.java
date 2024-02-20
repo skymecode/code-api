@@ -16,8 +16,6 @@ public class InterfaceInvokeRequest implements Serializable {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String userRequestParams;
-
-
+    private String[] userRequestParams;
 
 }
